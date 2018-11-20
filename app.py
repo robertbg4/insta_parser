@@ -59,6 +59,5 @@ def index_1(nick):
     return app.send_static_file(f'{nick}.html')
 
 if __name__ == '__main__':
-    #app.run(debug=True, host='172.26.9.28', port=8009)
     app.run(debug=False, port=5000)
 
