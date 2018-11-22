@@ -2,10 +2,12 @@ import requests
 import json
 import base64
 import sys
+
 from datetime import datetime
 from flask import Flask, request
+import werkzeug.exceptions as exc
 
-app = Flask(__name__, static_folder='/home/ubuntu/server_host/')
+app = Flask(__name__, static_folder='/home/ubuntu/server_host/html/')
 app.config.from_object(__name__)
 
 @app.route('/instagram/<nick>')
@@ -14,11 +16,14 @@ def index_1(nick):
         r = requests.get(f'https://www.instagram.com/{nick}/')
         if r.status_code != 200:
             print(r.text)
-        res = r.content.decode('utf-8').split('window._sharedData = ')[1].split(';</script>')[0]
+        sharedData = r.content.decode('utf-8').split('window._sharedData = ')
+        if len(sharedData) < 2:
+            raise exc.NotFound('Nickname not found')
+        res = sharedData[1].split(';</script>')[0]
         data = json.loads(res)
         page = data['entry_data']['ProfilePage']
         if not len(page):
-            return
+            raise exc.Forbidden('This account is private')
         posts = page[0]['graphql']['user']['edge_owner_to_timeline_media']['edges']
         return posts
     def get_post_info(post):
@@ -48,11 +53,11 @@ def index_1(nick):
     html = '<!DOCTYPE html><html><body>'.encode('utf8')
     posts = get_posts(nick)
     if not posts:
-        return 'Закрытый профиль:('
+        raise exc.Forbidden('This account is private')
     for post in posts:
         html += get_post_info(post)
     html += '</body></html>'.encode('utf8')
-    file = open(f'{nick}.html', 'w')
+    file = open(f'html/{nick}.html', 'w')
     file.write(html.decode('utf8'))
     file.close()
     print(request)
